@@ -39,3 +39,18 @@ jobs:
           with:
             name: Mocha-Test-Results-${{ matrix.operating_system }}-node${{ matrix.node_version }}
             path: test-results.xml
+    
+    aggregate:
+      needs: unit-testing
+      runs-on: ubuntu-latest
+      steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: results/
+
+      - name: Re-upload as one artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mocha-test-results
+          path: results/
