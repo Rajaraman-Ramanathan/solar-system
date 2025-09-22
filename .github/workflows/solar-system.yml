@@ -90,7 +90,7 @@ jobs:
           with:
             username: ${{ vars.DOCKER_USERNAME }}
             password: ${{ secrets.DOCKER_PASSWORD }}
-        - name: Build and Test Docker Image
+        - name: Build Docker Image
           uses: docker/build-push-action@v4
           with:
             context: .
@@ -101,9 +101,9 @@ jobs:
             docker run -d \
             -p 3000:3000 \
             --name solar-system-app \
-            -e MONGO_URI=${{ env.MONGO_URI }} \
-            -e MONGO_USERNAME=${{ env.MONGO_USERNAME }} \
-            -e MONGO_PASSWORD=${{ env.MONGO_PASSWORD }} \
+            -e MONGO_URI=${{ vars.MONGO_URI }} \
+            -e MONGO_USERNAME=${{ vars.MONGO_USERNAME }} \
+            -e MONGO_PASSWORD=${{ secrets.MONGO_PASSWORD }} \
             ${{ vars.DOCKER_USERNAME }}/solar-system:${{ github.sha }}
             sleep 5
             echo "Running tests against the Docker container..."
