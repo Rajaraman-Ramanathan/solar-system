@@ -9,6 +9,48 @@ env:
     MONGO_PASSWORD: ${{ secrets.MONGO_PASSWORD }}
 
 jobs:
+    secret-scan:
+      name: Secret Scanning
+      runs-on: ubuntu-latest
+
+      steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Run GitLeaks Scan
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          config-path: ""
+          fail: true
+
+    dependency-scan:
+      name: Dependency Vulnerability Scan
+      runs-on: ubuntu-latest
+
+      steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install dependencies
+        run: npm install
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate || true
+
+    codeql-analysis:
+      name: Static Code Analysis (CodeQL)
+      runs-on: ubuntu-latest
+      permissions:
+        actions: read
+        contents: read
+        security-events: write
+      steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
     unit-testing:
         name: Unit Testing
         strategy:
@@ -114,3 +156,35 @@ jobs:
             context: .
             push: true
             tags: ${{ vars.DOCKER_USERNAME }}/solar-system:${{ github.sha }}
+
+    image-scan:
+      name: Container Image Scan
+      needs: [docker]
+      runs-on: ubuntu-latest
+
+      steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Pull built image
+        run: docker pull ${{ vars.DOCKER_USERNAME }}/solar-system:${{ github.sha }}
+      - name: Run Trivy scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ vars.DOCKER_USERNAME }}/solar-system:${{ github.sha }}
+          format: table
+          vuln-type: os,library
+          exit-code: 0
+
+    iac-scan:
+      name: IaC Misconfiguration Scan
+      runs-on: ubuntu-latest
+      
+      steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Run KICS Scan
+        uses: Checkmarx/kics-github-action@v2.1.14
+        with:
+          path: .
+          output_path: kics-results.json
+          fail_on: high
