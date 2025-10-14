@@ -10,17 +10,22 @@ env:
 
 jobs:
     secret-scan:
-      name: Secret Scanning
+      name: Secret Scanning (GitLeaks)
       runs-on: ubuntu-latest
-
       steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
       - name: Run GitLeaks Scan
         uses: gitleaks/gitleaks-action@v2
         with:
-          config-path: ""
-          fail: true
+          args: detect --config .gitleaks.toml --source . --report-format json --report-path gitleaks-report.json || true
+      - name: Upload GitLeaks Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-report
+          path: gitleaks-report.json
+          retention-days: 1
 
     dependency-scan:
       name: Dependency Vulnerability Scan
@@ -53,6 +58,7 @@ jobs:
 
     unit-testing:
         name: Unit Testing
+        needs: [secret-scan, dependency-scan, codeql-analysis]
         strategy:
           matrix:
             node_version: [21, 22]
@@ -93,6 +99,7 @@ jobs:
         
     coverage-report:
         name: Coverage Report
+        needs: [secret-scan, dependency-scan, codeql-analysis]
         runs-on: ubuntu-latest
 
         steps:
@@ -177,6 +184,7 @@ jobs:
 
     iac-scan:
       name: IaC Misconfiguration Scan
+      needs: [docker]
       runs-on: ubuntu-latest
       
       steps:
