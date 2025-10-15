@@ -4,26 +4,51 @@ metadata:
   labels:
     app: solar-system
   name: solar-system
-  namespace: _{_NAMESPACE_}_
+  namespace: development
 spec:
-  replicas: _{_REPLICAS_}_
+  replicas: 3
   selector:
     matchLabels:
       app: solar-system
-  strategy: {}
   template:
     metadata:
       labels:
         app: solar-system
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 2000
+        fsGroup: 3000
+        readOnlyRootFilesystem: true
+        allowPrivilegeEscalation: false
       containers:
-      - image: _{_IMAGE_}_
+      - name: solar-system
+        image: _{_IMAGE_}_
         imagePullPolicy: Always
-        name: solar-system
         ports:
-        - containerPort: 3000
-          name: http
+        - name: http
           protocol: TCP
+          containerPort: 3000
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /live
+            port: 3000
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet: /ready
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 10
         envFrom:
         - secretRef:
             name: mongo-db-creds
