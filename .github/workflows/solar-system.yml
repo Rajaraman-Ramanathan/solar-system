@@ -250,4 +250,4 @@ jobs:
         with:
           path: .
           output_path: kics-results.json
-          fail_on: high
+          fail_on: critical,high,medium
