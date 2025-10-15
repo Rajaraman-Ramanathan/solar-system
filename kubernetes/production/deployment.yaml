@@ -19,9 +19,9 @@ spec:
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
-        runAsUser: 1001
-        runAsGroup: 2001
-        fsGroup: 3001
+        runAsUser: 10001
+        runAsGroup: 10002
+        fsGroup: 10003
       containers:
       - name: solar-system
         image: _{_IMAGE_}_
