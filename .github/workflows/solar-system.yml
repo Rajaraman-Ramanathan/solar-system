@@ -12,6 +12,7 @@ jobs:
     secret-scan:
       name: Secret Scanning (GitLeaks)
       runs-on: ubuntu-latest
+
       steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -39,16 +40,43 @@ jobs:
           retention-days: 1
 
     dependency-scan:
-      name: Dependency Vulnerability Scan
+      name: Dependency Scanning (Snyk)
       runs-on: ubuntu-latest
+      permissions:
+        contents: read
+        security-events: write
 
       steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Install dependencies
-        run: npm install
-      - name: Run npm audit
-        run: npm audit --audit-level=moderate || true
+        - name: Checkout code
+          uses: actions/checkout@v4
+        - name: Setup Node.js
+          uses: actions/setup-node@v4
+          with:
+            node-version: '22'
+        - name: Install dependencies
+          run: npm install
+        - name: Run Snyk Vulnerability Scan
+          uses: snyk/actions/node@master
+          env:
+            SNYK_TOKEN: ${{ secrets.SNYK_API_TOKEN }}
+          with:
+            command: test
+            args: --severity-threshold=high
+          continue-on-error: true
+        - name: Generate Snyk HTML Report
+          if: always()
+          run: |
+            snyk test --severity-threshold=high --json > snyk-report.json || true
+            snyk-to-html -i snyk-report.json -o snyk-report.html
+          env:
+            SNYK_TOKEN: ${{ secrets.SNYK_API_TOKEN }}
+        - name: Upload Snyk Report
+          if: always()
+          uses: actions/upload-artifact@v4
+          with:
+            name: snyk-report
+            path: snyk-report.html
+            retention-days: 1
 
     codeql-analysis:
       name: Static Code Analysis (CodeQL)
@@ -57,6 +85,7 @@ jobs:
         actions: read
         contents: read
         security-events: write
+
       steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -107,6 +136,18 @@ jobs:
             name: Mocha-Test-Results-${{ matrix.operating_system }}-node${{ matrix.node_version }}
             path: test-results.xml
             retention-days: 1
+        - name: Quick Dependency Check (npm audit)
+          run: |
+            echo "Running npm audit for quick feedback..."
+            npm audit --audit-level=moderate || echo "Vulnerabilities detected."
+            npm audit --json > npm-audit-report.json
+          continue-on-error: true
+        - name: Upload npm audit report
+          if: always()
+          uses: actions/upload-artifact@v4
+          with:
+            name: npm-audit-report
+            path: npm-audit-report.json
         
     coverage-report:
         name: Coverage Report
